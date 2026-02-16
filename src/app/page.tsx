@@ -7,6 +7,7 @@ import { Flashcard, type FlashcardData } from "@/components/ui/Flashcard";
 import { calculateNextReview, type ReviewItem } from "@/lib/srs";
 import { AnimatePresence, motion } from "framer-motion";
 import { Brain, Sparkles, AlertCircle } from "lucide-react";
+import { processDocument } from "./actions";
 
 // Extend FlashcardData to include SRS info
 interface StudyCard extends FlashcardData {
@@ -64,15 +65,12 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const res = await fetch(`/api/upload?t=${Date.now()}`, {
-        method: "POST",
-        body: formData,
-        cache: "no-store",
-      });
+      const data = await processDocument(formData);
 
-      if (!res.ok) throw new Error("נכשל עיבוד הקובץ");
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
-      const data = await res.json();
       if (data.flashcards && data.flashcards.length > 0) {
         setDeck(data.flashcards);
         setAppState("studying");

@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import mammoth from "mammoth";
+"use server";
 
-export async function POST(req: NextRequest) {
+import mammoth from "mammoth";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+export async function processDocument(formData: FormData) {
   try {
-    const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "לא סופק קובץ" }, { status: 400 });
+      return { error: "לא סופק קובץ" };
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -16,10 +17,7 @@ export async function POST(req: NextRequest) {
     const { value: text } = await mammoth.extractRawText({ buffer });
 
     if (text.length < 50) {
-      return NextResponse.json(
-        { error: "הקובץ אינו מכיל מספיק טקסט לעיבוד." },
-        { status: 400 },
-      );
+      return { error: "הקובץ אינו מכיל מספיק טקסט לעיבוד." };
     }
 
     // Gemini Integration
@@ -28,7 +26,6 @@ export async function POST(req: NextRequest) {
 
     if (apiKey) {
       try {
-        const { GoogleGenerativeAI } = require("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
           model: "gemini-flash-latest",
@@ -83,7 +80,6 @@ export async function POST(req: NextRequest) {
         } else {
           console.error("Could not find JSON in Gemini response");
           // Fail silently to fallback, or could throw.
-          // For now, let's allow fallback to pick it up.
         }
       } catch (aiError) {
         console.error("Gemini Generation Error:", aiError);
@@ -121,19 +117,9 @@ export async function POST(req: NextRequest) {
       ];
     }
 
-    return NextResponse.json(
-      { flashcards },
-      {
-        headers: {
-          "Cache-Control": "no-store, max-age=0",
-        },
-      },
-    );
+    return { flashcards };
   } catch (error) {
     console.error("Error processing file:", error);
-    return NextResponse.json(
-      { error: "Failed to process file" },
-      { status: 500 },
-    );
+    return { error: "Failed to process file" };
   }
 }
